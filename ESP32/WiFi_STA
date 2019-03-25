@@ -1,0 +1,149 @@
+-- 06.03.2019 07:04:22 AR V1.0a
+
+block.setSize(151, 51)
+
+generic = {
+  parameter = {
+    ssid = 'Router',
+    password = '********',
+    async = false,
+  },
+
+  init = function(self)
+    block.needPPVersion(2, 2, 'c')
+    block.setOutputsPinCount(1)
+    block.setOutputPinTypeRestrains(1, 'boolean')
+    block.setOutputPinName(1, 'con')
+  end,
+
+  open = function(self)
+    gui.add('Info', 'Info', 'GPS', [[
+]])
+    gui.add('Edit', 'EditSSID', 'SSID')
+    gui.add('Edit', 'EditPassword', 'Password')
+    gui.add('CheckBox', 'CheckBoxAsync', 'Async start (don\'t wait for connection)', {Width = 240})
+    gui.add('Edit', 'EditIP', 'IP (optional)')
+    gui.add('Edit', 'EditMask', 'Mask (optional)')
+    gui.add('Edit', 'EditGW', 'Gateway (optional)')
+    gui.add('Edit', 'EditDNS1', 'DNS 1 (optional)')
+    gui.add('Edit', 'EditDNS2', 'DNS 2 (optional)')
+    gui.add('CheckBox', 'CheckBoxPowersave', 'Powersave', {Width = 240})
+    gui.add('Edit', 'EditChannel', 'Channel (optional)', {IntegerMode = true})
+    gui.add('CheckBox', 'CheckBoxHidden', 'Hidden', {Width = 240})
+
+    gui.set('EditSSID', 'Text', self.parameter.ssid)
+    gui.set('EditPassword', 'Text', self.parameter.password)
+    gui.set('CheckBoxAsync', 'Checked', self.parameter.async)
+    gui.set('EditIP', 'Text', self.parameter.ip)
+    gui.set('EditMask', 'Text', self.parameter.mask)
+    gui.set('EditGW', 'Text', self.parameter.gw)
+    gui.set('EditDns1', 'Text', self.parameter.dns1)
+    gui.set('EditDns2', 'Text', self.parameter.dns2)
+    gui.set('CheckBoxPowersave', 'Checked', self.parameter.powersave)
+    gui.set('EditChannel', 'Integer', self.parameter.channel)
+    gui.set('CheckBoxHidden', 'Checked', self.parameter.hidden)
+    gui.setSize()
+  end,
+
+
+  apply = function(self)
+    self.parameter.ssid = gui.get('EditSSID', 'Text')
+    self.parameter.password = gui.get('EditPassword', 'Text')
+    self.parameter.async = gui.get('CheckBoxAsync', 'Checked')
+    self.parameter.ip = gui.get('EditIP', 'Text')
+    self.parameter.mask = gui.get('EditMask', 'Text')
+    self.parameter.gw = gui.get('EditGW', 'Text')
+    self.parameter.dns1 = gui.get('EditDNS1', 'Text')
+    self.parameter.dns2 = gui.get('EditDNS2', 'Text')
+    self.parameter.powersave = gui.get('CheckBoxPowersave', 'Checked')
+    self.parameter.channel = gui.get('EditChannel', 'Integer')
+    self.parameter.hidden = gui.get('CheckBoxPowersave', 'Checked')
+  end,
+
+  close = function()
+  end,
+
+  avatar = function(self)
+    return block.getDefaultAvatar{
+      Type = 0x02,
+      CenterDrawSource = [[
+        draw.setColorA(0.8, 0.8, 0.8)
+        draw.text(0, 0, w, h, "WiFi STA", 4)
+        draw.arc(14, 20, 30, 30, 10, -10, -10, -10, 2)
+        draw.arc(14, 20, 22, 22, 10, -10, -10, -10, 2)
+        draw.arc(14, 20, 14, 14, 10, -10, -10, -10, 2)
+        draw.disk(14, 20, 3)
+      ]],
+      FillColorSource = '0.36, 0.37, 0.42',
+      PinNameColorSource = '1, 1, 1',
+    }
+  end,
+
+  generate = function(self, remote)
+    if not remote then
+      return false
+    end
+    local _, _, group = remote:find('(%w*)')
+    if group ~= 'ESP32' then
+      return false
+    end
+
+    local source =
+      [==[
+        local block = {}
+
+        block.start = function()
+          print('SSID', [[PASSWORD]])
+          net.wf.setup(net.wf.mode.STA, 'SSID', [[PASSWORD]], IP, MASK, GW, DNSA, DNSB, POWERSAVE, CHANNEL, HIDDEN)
+          net.wf.start(ASYNC)
+        end
+
+        block.step = function(a)
+          return net.connected()
+        end
+
+        block.stop = function(a)
+          net.wf.stop()
+        end
+
+        return block
+      ]==]
+    local function availIP(s)
+      if s and #s > 0 then
+        return "net.packip('" .. s .. "'))"
+      end
+      return "nil"
+    end
+    local function availIP2(s)
+      if s and #s > 0 then
+        return "net.packip('" .. s .. "'))"
+      end
+      return 0
+    end
+    local function availNumber(n)
+      if n and n > 0 then
+        return n
+      end
+      return "nil"
+    end
+
+    local replaces = {
+      ['NAME'] = self.name,
+      ['SSID'] = self.parameter.ssid,
+      ['PASSWORD'] = self.parameter.password,
+      ['ASYNC'] = self.parameter.async and 'true' or '',
+      ['IP'] = availIP(self.parameter.ip),
+      ['MASK'] = availIP(self.parameter.mask),
+      ['GW'] = availIP2(self.parameter.gw),
+      ['DNSA'] = availIP(self.parameter.dns1),
+      ['DNSB'] = availIP(self.parameter.dns2),
+      ['POWERSAVE'] = self.parameter.powersave and '1' or '0',
+      ['CHANNEL'] = availNumber(self.parameter.channel),
+      ['HIDDEN'] = self.parameter.hidden and '1' or '0',
+    }
+    return string.gsub(source, '%a+', replaces), block.codeInfo('TargetSpecial', 'Lua53')
+  end,
+
+}
+
+

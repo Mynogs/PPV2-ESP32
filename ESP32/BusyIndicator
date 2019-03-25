@@ -1,0 +1,98 @@
+-- 06.03.2019 07:04:22 AR V1.0a
+
+block.setSize(101, 21)
+
+generic = {
+  parameter = {
+    pin = 0,
+    invert = false,
+  },
+
+  init = function(self)
+    block.needPPVersion(2, 0, 'c')
+  end,
+
+  open = function(self)
+    gui.add('Info', 'Info', 'Busy Indicator', [[
+Control an output pin to show the busy time of a simulation cycle.
+
+Note: The LED on the most eval boards is pulled down, so check the 'Invert signal'.
+    ]])
+    local pins = ''
+    for i = 1, 40 do
+      pins = pins .. 'GPIO' .. (i - 1) .. '\n'
+    end
+    gui.add('ComboBox', 'ComboBoxPin', 'Pin', pins, {DropDownCount = #pins})
+    gui.add('CheckBox', 'CheckBoxInvert', 'Invert signal')
+    gui.set('ComboBoxPin', 'ItemIndex', self.parameter.pin)
+    gui.set('CheckBoxInvert', 'Checked', self.parameter.invert)
+    gui.setSize()
+  end,
+
+  apply = function(self)
+    self.parameter.pin = gui.get('ComboBoxPin', 'ItemIndex')
+    self.parameter.invert = gui.get('CheckBoxInvert', 'Checked')
+  end,
+
+  close = function()
+  end,
+
+  avatar = function(self)
+    return block.getDefaultAvatar{
+      Type = 0x5E,
+      CenterDrawSource = [[
+        draw.setColorA(0.8, 0.8, 0.8)
+        draw.text(0, 0, w, h, "GPIO]] .. self.parameter.pin .. [[", 4)
+        draw.setColorA(0, 1, 0)
+        draw.disk(h / 2, h / 2 + 1, 4)
+      ]],
+      FillColorSource = '0.36, 0.37, 0.42',
+      PinNameColorSource = '1, 1, 1',
+    }
+  end,
+
+  generate = function(self, remote)
+    if not remote then
+      return false
+    end
+    local _, _, group = remote:find('(%w*)')
+    if group ~= 'ESP32' then
+      return false
+    end
+
+    local source =
+      [==[
+        local block = {}
+
+        block.start = function()
+          pio.pin.setdir(pio.OUTPUT, PIN)
+          sim.cycle = function(on)
+            if on then
+              pio.pin.ON(PIN)
+            else
+              pio.pin.OFF(PIN)
+            end
+          end
+        end
+
+        block.step = function(a)
+        end
+
+        block.stop = function(a)
+          sim.cycle = nil
+        end
+
+        return block
+      ]==]
+
+    local replaces = {
+      ['NAME'] = self.name,
+      ['PIN'] = 'pio.GPIO' .. self.parameter.pin,
+      ['ON'] = self.parameter.invert and 'setlow' or 'sethigh',
+      ['OFF'] = self.parameter.invert and 'sethigh' or 'setlow',
+    }
+    return string.gsub(source, '%a+', replaces), block.codeInfo('TargetSpecial', 'Lua53')
+  end,
+
+}
+

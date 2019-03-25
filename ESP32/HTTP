@@ -1,0 +1,79 @@
+-- 10.03.2019 09:58:20 AR V1.0a
+
+block.setSize(151, 51)
+
+generic = {
+  parameter = {
+  },
+
+  init = function(self)
+    block.needPPVersion(2, 2, 'c')
+    block.setInputsPinCount(1)
+    block.setInputPinTypeRestrains(1, 'boolean')
+    block.setInputPinName(1, 'enable')
+  end,
+
+  open = function(self)
+    gui.add('Info', 'Info', 'HTTP', [[
+HyperText Transfer Protocol.
+]])
+    gui.setSize()
+  end,
+
+  apply = function(self)
+  end,
+
+  close = function()
+  end,
+
+  avatar = function(self)
+    return block.getDefaultAvatar{
+      Type = 0x02,
+      CenterDrawSource = [[
+        draw.setColorA(0.8, 0.8, 0.8)
+        draw.text(0, 0, w, h, "HTTP", 4)
+      ]],
+      FillColorSource = '0.36, 0.37, 0.42',
+      PinNameColorSource = '1, 1, 1',
+    }
+  end,
+
+  generate = function(self, remote)
+    if not remote then
+      return false
+    end
+    local _, _, group = remote:find('(%w*)')
+    if group ~= 'ESP32' then
+      return false
+    end
+
+    local source =
+      [==[
+        local block = {}
+
+        block.start = function()
+        end
+
+        block.step = function(a)
+          if a ~= block.a then
+            if a then
+              net.service.http.start()
+            else
+              net.service.http.stop()
+            end
+          end
+          block.a = a
+        end
+
+        block.stop = function(a)
+          net.service.http.stop()
+        end
+
+        return block
+      ]==]
+    return source, block.codeInfo('TargetSpecial', 'Lua53')
+  end,
+
+}
+
+

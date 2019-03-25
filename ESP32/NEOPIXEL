@@ -1,0 +1,91 @@
+-- 07.03.2019 11:14:39 AR V1.0a
+
+block.setSize(101, 21)
+
+generic = {
+  parameter = {
+    pin = 0,
+    count = 10,
+  },
+
+  init = function(self)
+    block.needPPVersion(2, 0, 'c')
+    block.setInputsPinCount(1)
+    block.setInputPinTypeRestrains(1, 'table')
+    block.modifyFlags('SupressStopFunctionCall', true)
+  end,
+
+  open = function(self)
+    gui.add('Info', 'Info', 'NEOPIXEL modul', [[
+Display a RGB color.
+Input is a table with three values in the range 0.0 to 1.0
+]])
+    local pins = ''
+    for i = 1, 40 do
+      pins = pins .. 'GPIO' .. (i - 1) .. '\n'
+    end
+    gui.add('ComboBox', 'ComboBoxPin', 'Pin', pins, {DropDownCount = #pins})
+    gui.add('Edit', 'EditCount', 'Number of pixels', {NumberMode = true})
+    gui.set('ComboBoxPin', 'ItemIndex', self.parameter.pin)
+    gui.set('EditCount', 'Number', self.parameter.count)
+    gui.setSize()
+  end,
+
+  apply = function(self)
+    self.parameter.pin = gui.get('ComboBoxPin', 'ItemIndex')
+    self.parameter.count = gui.get('EditCount', 'Number')
+  end,
+
+  close = function()
+  end,
+
+  avatar = function(self)
+    return block.getDefaultAvatar{
+      Type = 0x5E,
+      CenterDrawSource = 'draw.setColorA(0.8, 0.8, 0.8) draw.text(0, 0, w, h, "GPIO' .. self.parameter.pin .. '", 4)',
+      FillColorSource = '0.36, 0.37, 0.42',
+      PinNameColorSource = '1, 1, 1',
+    }
+  end,
+
+  generate = function(self, remote)
+    if not remote then
+      return false
+    end
+    local _, _, group = remote:find('(%w*)')
+    if group ~= 'ESP32' then
+      return false
+    end
+
+    local source =
+      [==[
+        local block = {}
+
+        block.start = function()
+          block.neo = neopixel.attach(neopixel.WS2812B, PIN, COUNT)
+        end
+
+        block.step = function(a)
+          local n = math.min(COUNT, #a)
+          for i = 1, n do
+            local ai = a[i]
+            if ai then
+              local r, g, b = math.floor(ai[1] * 255.0), math.floor(ai[2] * 255.0), math.floor(ai[3] * 255.0)
+              block.neo:setPixel(i - 1, math.min(math.max(r, 0), 255), math.min(math.max(g, 0), 255), math.min(math.max(b, 0), 255))
+            end
+          end
+          block.neo:update()
+        end
+
+        return block
+      ]==]
+    local replaces = {
+      ['NAME'] = self.name,
+      ['PIN'] = 'pio.GPIO' .. self.parameter.pin,
+      ['COUNT'] = self.parameter.count,
+    }
+    return string.gsub(source, '%a+', replaces), block.codeInfo('TargetSpecial', 'Lua53')
+  end,
+
+}
+

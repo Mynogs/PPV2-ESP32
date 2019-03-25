@@ -1,0 +1,273 @@
+-- 06.03.2019 07:04:22 AR V1.0a
+
+block.setSize(101, 51)
+
+local configs = {
+  ['generic'] = {
+    sensor = 'DHT11',
+    --info = '',
+    interface = {type = 'ADC', template = "'pio.GPIO#'"},
+    parameter = {
+      {name = 'resolution', type = 'Integer', default = 10}
+    },
+    provides = {
+      {name = 'temperature'},
+      {name = 'humidity'},
+    },
+  },
+  ['SDS011'] = {
+    sensor = 'SDS011',
+    info = 'https://github.com/whitecatboard/Lua-RTOS-ESP32/wiki/SDS011-NOVA-PM-SENSOR',
+    interface = {type = 'UART', template = "'uart.UART#'"},
+    parameter = {
+    },
+    provides = {
+      {name = 'pm_2_5'},
+      {name = 'pm_10'},
+    },
+  },
+  ['2Y0A21'] = {
+    sensor = '2Y0A21',
+    info = 'https://github.com/whitecatboard/Lua-RTOS-ESP32/wiki/2Y0A21-SENSOR',
+    interface = {type = '', template = "adc.ADS1115, 0"},
+    parameter = {
+    },
+    provides = {
+      {name = 'distance'},
+    },
+  },
+  ['GPS'] = {
+    sensor = 'GPS',
+    info = 'https://github.com/whitecatboard/Lua-RTOS-ESP32/wiki/GPS-SENSOR',
+    interface = {type = 'UART', template = "'uart.UART#', 9600, 8, uart.PARNONE, uart.STOP1"},
+    parameter = {
+    },
+    provides = {
+      {name = 'lon'},
+      {name = 'lat'},
+      {name = 'sats'},
+    },
+  },
+  ['BME280'] = {
+    sensor = 'BME280',
+    info = 'https://github.com/whitecatboard/Lua-RTOS-ESP32/wiki/BME280-SENSOR',
+    interface = {type = 'I2C', template = "i2c.I2C#, 0"},
+    parameter = {
+    },
+    provides = {
+      {name = 'temperature'},
+      {name = 'humidity'},
+      {name = 'pressure'},
+    },
+  },
+  ['DHT11'] = {
+    sensor = 'DHT11',
+    info = 'https://github.com/whitecatboard/Lua-RTOS-ESP32/wiki/DHT11-SENSOR',
+    interface = {type = 'GPIO', template = 'pio.GPIO#'},
+    parameter = {
+      {name = 'resolution', type = 'Integer', default = 10}
+    },
+    provides = {
+      {name = 'temperature'},
+      {name = 'humidity'},
+    },
+  },
+  ['DHT22'] = {
+    sensor = 'DHT22',
+    info = 'https://github.com/whitecatboard/Lua-RTOS-ESP32/wiki/DHT22-SENSOR',
+    interface = {type = 'GPIO', template = 'pio.GPIO#'},
+    parameter = {
+      {name = 'resolution', type = 'Integer', default = 10}
+    },
+    provides = {
+      {name = 'temperature'},
+      {name = 'humidity'},
+    },
+  },
+  ['DHT23'] = {
+    sensor = 'DHT23',
+    info = 'https://github.com/whitecatboard/Lua-RTOS-ESP32/wiki/DHT23-SENSOR',
+    interface = {type = 'GPIO', template = 'pio.GPIO#'},
+    parameter = {
+      {name = 'resolution', type = 'Integer', default = 10}
+    },
+    provides = {
+      {name = 'temperature'},
+      {name = 'humidity'},
+    },
+  },
+  ['BH1620FVC'] = {
+    sensor = 'BH1620FVC',
+    info = 'https://github.com/whitecatboard/Lua-RTOS-ESP32/wiki/BH1620FVC-SENSOR',
+    interface = {type = '', template = "adc.ADS1115, 0"},
+    parameter = {
+      {name = 'gain', type = 'Integer', default = 0},
+      {name = 'r1', type = 'Integer', default = 5600},
+      {name = 'calibration', type = 'Integer', default = 0},
+    },
+    provides = {
+      {name = ''},
+    },
+  },
+  ['BH1721FVC'] = {
+    sensor = 'BH1721FVC',
+    info = 'https://github.com/whitecatboard/Lua-RTOS-ESP32/wiki/BH1721FVC-SENSOR',
+    interface = {type = 'I2C', template = "i2c.I2C#, 0"},
+    parameter = {
+      {name = 'resolution', type = 'Integer', default = 1},
+      {name = 'calibration', type = 'Integer', default = 0},
+    },
+    provides = {
+      {name = 'illuminance'},
+    },
+  },
+--[[
+  [''] = {
+    sensor = '',
+    info = '',
+    interface = {type = 'GPIO', template = "'pio.GPIO#'"},
+    parameter = {
+      {name = '', type = 'Integer', default = 10},
+    },
+    provides = {
+      {name = ''},
+    },
+  },
+--]]
+}
+
+local class = block.getClassName()
+if class == 'Generic' then
+  class = 'DHT11'
+end
+print(class)
+local config = configs[class]
+
+generic = {
+  parameter = {
+  },
+
+  init = function(self)
+    self.parameter.interface = 0
+    for i = 1, #config.parameter do
+      local p = config.parameter[i]
+      if not self.parameter[p.name] then
+        self.parameter[p.name] = p.default
+      end
+    end
+    block.setOutputsPinCount(#config.provides)
+    for i = 1, #config.provides do
+      local p = config.provides[i]
+      block.setOutputPinName(i, p.name)
+    end
+    block.needPPVersion(2, 0, 'c')
+    block.modifyFlags('SupressStopFunctionCall', true)
+  end,
+
+  open = function(self)
+    gui.add('Info', 'Info', 'SENSOR ' .. config.sensor, config.info or config.sensor)
+    if config.interface.type == 'GPIO' then
+      local pins = ''
+      for i = 1, 40 do
+        pins = pins .. 'GPIO' .. (i - 1) .. '\n'
+      end
+      self.parameter.interface = 0,
+      gui.add('ComboBox', 'ComboBoxPin', 'Pin', pins, {DropDownCount = #pins})
+      gui.set('ComboBoxPin', 'ItemIndex', self.parameter.interface)
+    elseif config.interface.type == 'UART' then
+      local uarts = ''
+      for i = 1, 4 do
+        uarts = uarts .. 'UART' .. (i - 1) .. '\n'
+      end
+      self.parameter.interface = 0,
+      gui.add('ComboBox', 'ComboBoxUART', 'UART', uarts, {DropDownCount = #uarts})
+      gui.set('ComboBoxUART', 'ItemIndex', self.parameter.interface)
+    elseif config.interface.type == 'I2C' then
+      local uarts = ''
+      for i = 1, 2 do
+        uarts = uarts .. 'I2C' .. (i - 1) .. '\n'
+      end
+      self.parameter.interface = 0,
+      gui.add('ComboBox', 'ComboBoxI2C', 'UART', uarts, {DropDownCount = #uarts})
+      gui.set('ComboBoxI2C', 'ItemIndex', self.parameter.interface)
+    end
+    for i = 1, #config.parameter do
+      local p = config.parameter[i]
+      gui.add('Edit', 'Edit' .. i, p.name)
+      gui.set('Edit' .. i, p.type, self.parameter[p.name])
+    end
+    gui.setSize()
+  end,
+
+  apply = function(self)
+    if config.interface.type == 'GPIO' then
+      self.parameter.interface = gui.get('ComboBoxPin', 'ItemIndex')
+    elseif config.interface.type == 'UART' then
+      self.parameter.interface = gui.get('ComboBoxUART', 'ItemIndex')
+    elseif config.interface.type == 'I2C' then
+      self.parameter.interface = gui.get('ComboBoxI2C', 'ItemIndex')
+    end
+    for i = 1, #config.parameter do
+      local p = config.parameter[i]
+      self.parameter[p.name] = gui.get('Edit' .. i, p.type)
+    end
+  end,
+
+  close = function()
+  end,
+
+  avatar = function(self)
+    return block.getDefaultAvatar{
+      Type = 0x02,
+      CenterDrawSource = 'draw.setColorA(0.8, 0.8, 0.8) draw.text(0, 0, w, h, "' .. config.sensor .. '", 4)',
+      FillColorSource = '0.36, 0.37, 0.42',
+      PinNameColorSource = '1, 1, 1',
+    }
+  end,
+
+  generate = function(self, remote)
+    if not remote then
+      return false
+    end
+    local _, _, group = remote:find('(%w*)')
+    if group ~= 'ESP32' then
+      return false
+    end
+
+    local source =
+      [==[
+        local block = {}
+
+        block.start = function()
+          block.s = sensor.attach('SENSOR', INTERFACE)
+          START
+        end
+
+        block.step = function()
+          STEP
+        end
+
+        return block
+      ]==]
+    local start, step = '', ''
+    print(#config.parameter)
+    for i = 1, #config.parameter do
+      local p = config.parameter[i]
+      start = start .. (#start > 0 and ', ' or '') .. 'block.s:set("' .. p.name .. '", ' .. p.default .. ')'
+    end
+    for i = 1, #config.provides do
+      local p = config.provides[i]
+      step = step .. (#step > 0 and ', ' or '') .. 'block.s:read("' .. p.name .. '")'
+    end
+    local replaces = {
+      ['SENSOR'] = config.sensor,
+      ['INTERFACE'] = string.gsub(config.interface.template, '#', tostring(self.parameter.interface)),
+      ['START'] = start,
+      ['STEP'] = step,
+    }
+    return string.gsub(source, '%a+', replaces), block.codeInfo('TargetSpecial', 'Lua53')
+  end,
+
+}
+
+
