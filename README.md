@@ -10,4 +10,4 @@ To install the block library please look here: [Install blocks](https://github.c
 
 :exclamation: Set the p+ user level to **Basic** to enable remote target injection.
 
-:exclamation: Non't forget to set the correct COM port under <i>Simulation->Settings->Remote Target</i>!
+:exclamation: Don't forget to set the correct COM port under <i>Simulation->Settings->Remote Target</i>!
