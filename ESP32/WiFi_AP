@@ -4,26 +4,26 @@ block.setSize(151, 51)
 
 generic = {
   parameter = {
-    ssid = 'Router',
+    ssid = 'EPS32_AP',
     password = '********',
     async = false,
   },
 
   init = function(self)
     block.needPPVersion(2, 2, 'c')
-    block.setOutputsPinCount(1)
-    block.setOutputPinTypeRestrains(1, 'boolean')
-    block.setOutputPinName(1, 'con')
+    block.setInputsPinCount(0)
+    block.setOutputsPinCount(0)
   end,
 
   open = function(self)
     gui.add('Info', 'Info', 'GPS', [[
+Setup wifi as AP (access point)
 ]])
     gui.add('Edit', 'EditSSID', 'SSID')
     gui.add('Edit', 'EditPassword', 'Password')
     gui.add('CheckBox', 'CheckBoxAsync', 'Async start (don\'t wait for connection)', {Width = 240})
     gui.add('CheckBox', 'CheckBoxPowersave', 'Powersave', {Width = 240})
-    gui.add('Edit', 'EditChannel', 'Channel (optional)', {IntegerMode = true})
+    gui.add('Edit', 'EditChannel', 'Channel (1..13, 0:auto)', {IntegerMode = true})
     gui.add('CheckBox', 'CheckBoxHidden', 'Hidden', {Width = 240})
 
     gui.set('EditSSID', 'Text', self.parameter.ssid)
@@ -79,7 +79,7 @@ generic = {
 
         block.start = function()
           print('SSID', [[PASSWORD]])
-          net.wf.setup(net.wf.mode.STA, 'SSID', [[PASSWORD]], POWERSAVE, CHANNEL, HIDDEN)
+          net.wf.setup(net.wf.mode.AP, 'SSID', [[PASSWORD]], POWERSAVE, CHANNEL, HIDDEN)
           net.wf.start(ASYNC)
         end
 
@@ -105,9 +105,9 @@ generic = {
       ['SSID'] = self.parameter.ssid,
       ['PASSWORD'] = self.parameter.password,
       ['ASYNC'] = self.parameter.async and 'true' or '',
-      ['POWERSAVE'] = self.parameter.powersave and '1' or '0',
+      ['POWERSAVE'] = self.parameter.powersave and 'net.wf.powersave.MODEM' or 'net.wf.powersave.NONE',
       ['CHANNEL'] = availNumber(self.parameter.channel),
-      ['HIDDEN'] = self.parameter.hidden and '1' or '0',
+      ['HIDDEN'] = self.parameter.hidden and 'true' or 'false',
     }
     return string.gsub(source, '%a+', replaces), block.codeInfo('TargetSpecial', 'Lua53')
   end,

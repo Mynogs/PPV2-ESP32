@@ -1,4 +1,6 @@
 -- 07.03.2019 11:14:39 AR V1.0a
+-- 27.09.2019 14:45:55 AR V1.0a Edit count integer mode
+-- 28.09.2019 07:43:52 AR V1.0a New s function
 
 block.setSize(101, 21)
 
@@ -25,15 +27,15 @@ Input is a table with three values in the range 0.0 to 1.0
       pins = pins .. 'GPIO' .. (i - 1) .. '\n'
     end
     gui.add('ComboBox', 'ComboBoxPin', 'Pin', pins, {DropDownCount = #pins})
-    gui.add('Edit', 'EditCount', 'Number of pixels', {NumberMode = true})
+    gui.add('Edit', 'EditCount', 'Number of pixels', {IntegerMode = true, Min =  1})
     gui.set('ComboBoxPin', 'ItemIndex', self.parameter.pin)
-    gui.set('EditCount', 'Number', self.parameter.count)
+    gui.set('EditCount', 'Integer', self.parameter.count)
     gui.setSize()
   end,
 
   apply = function(self)
     self.parameter.pin = gui.get('ComboBoxPin', 'ItemIndex')
-    self.parameter.count = gui.get('EditCount', 'Number')
+    self.parameter.count = gui.get('EditCount', 'Integer')
   end,
 
   close = function()
@@ -66,12 +68,15 @@ Input is a table with three values in the range 0.0 to 1.0
         end
 
         block.step = function(a)
+          local function s(v)
+            v = v and math.floor(v * 255.0) or 0
+            return math.min(math.max(v, 0), 255)
+          end
           local n = math.min(COUNT, #a)
           for i = 1, n do
             local ai = a[i]
             if ai then
-              local r, g, b = math.floor(ai[1] * 255.0), math.floor(ai[2] * 255.0), math.floor(ai[3] * 255.0)
-              block.neo:setPixel(i - 1, math.min(math.max(r, 0), 255), math.min(math.max(g, 0), 255), math.min(math.max(b, 0), 255))
+              block.neo:setPixel(i - 1, s(ai[1]), s(ai[2]), s(ai[3]))
             end
           end
           block.neo:update()

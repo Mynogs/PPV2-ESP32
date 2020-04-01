@@ -1,4 +1,5 @@
 -- 06.03.2019 07:04:22 AR V1.0a
+-- 23.01.2020 14:28:21 AR V1.0b Inital values for output
 
 block.setSize(101, 21)
 
@@ -41,6 +42,8 @@ Config a pin and get or set the value
       Input with pullup
       Input with pulldown
       Output
+      Output inital false
+      Output inital true
     ]])
     gui.add('CheckBox', 'CheckBoxInvert', 'Invert signal')
     gui.set('ComboBoxPin', 'ItemIndex', self.parameter.pin)
@@ -101,7 +104,12 @@ Config a pin and get or set the value
       end
       step = "return pio.pin.getval(PIN) == NTRUE"
     else
-      start = "pio.pin.setdir(pio.OUTPUT, PIN)"
+      start = "pio.pin.setdir(pio.OUTPUT, PIN)";
+      if self.parameter.mode == 4 then
+        start = start .. " pio.pin.setval(NFALSE, PIN)"
+      elseif self.parameter.mode == 5 then
+        start = start .. " pio.pin.setval(NTRUE, PIN)"
+      end
       step = "pio.pin.setval(a and NTRUE or NFALSE, PIN)"
     end
     do
